@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import win32com.client as win32
+import win32com.client as win32  # pywin32 라이브러리
 
 # Google API 자격증명 설정
 creds_json = os.getenv('GOOGLE_CREDENTIALS')
@@ -20,7 +20,7 @@ except json.JSONDecodeError:
     st.stop()
 
 # Google Sheets API 설정
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
