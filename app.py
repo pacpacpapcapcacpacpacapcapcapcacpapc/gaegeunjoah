@@ -4,9 +4,9 @@ import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from hangulmerge import HangulMerger  # 가상의 모듈, 실제로는 한글 파일을 다루는 모듈을 사용해야 합니다
+import win32com.client as win32
 
-# 환경 변수에서 자격증명 JSON 읽기
+# Google API 자격증명 설정
 creds_json = os.getenv('GOOGLE_CREDENTIALS')
 if creds_json is None:
     st.error("GOOGLE_CREDENTIALS 환경 변수가 설정되어 있지 않습니다.")
@@ -20,7 +20,7 @@ except json.JSONDecodeError:
     st.stop()
 
 # Google Sheets API 설정
-scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
@@ -38,22 +38,50 @@ if sheet_url:
         st.write("Google Sheets에서 가져온 데이터:")
         st.dataframe(df)
 
-        # 한글 파일 생성 및 메일머지
-        template_file = 'path/to/your/template.hwp'  # 한글 파일 경로
-        output_file = 'path/to/your/output.pdf'  # PDF 출력 파일 경로
-        
-        # HangulMerger 사용 예시 (가상의 모듈)
-        merger = HangulMerger(template_file)
-        for index, row in df.iterrows():
-            merger.merge(row.to_dict(), output_file)
+        # PDF 생성 버튼
+        if st.button("HWP 파일 및 PDF 생성"):
+            for index, row in df.iterrows():
+                # HWP 파일 생성 및 PDF 변환
+                hwp_template = 'template.hwp'  # 템플릿 파일 경로
+                output_hwp = f"output_{index+1}.hwp"  # 생성될 HWP 파일
+                output_pdf = f"output_{index+1}.pdf"  # PDF 출력 파일
+                
+                # HWP 메일머지 함수 호출
+                create_hwp(hwp_template, output_hwp, row)
+                
+                # HWP 파일을 PDF로 변환
+                hwp_to_pdf(output_hwp, output_pdf)
+                
+                # PDF 다운로드 제공
+                with open(output_pdf, "rb") as pdf:
+                    st.download_button(f"{row['이름']}의 PDF 다운로드", pdf, file_name=output_pdf)
 
-        st.success("메일머지 및 PDF 변환이 완료되었습니다!")
     except Exception as e:
         st.error(f"오류 발생: {e}")
 
-# requirements.txt 파일에 필요한 패키지
-# streamlit
-# gspread
-# oauth2client
-# pandas
-# hangulmerge (가상의 모듈, 실제로는 한글 파일을 다루는 모듈을 사용해야 합니다)
+# HWP 파일에 데이터를 병합하는 함수
+def create_hwp(template_file, output_file, data):
+    """
+    Google Sheets 데이터를 바탕으로 한글(HWP) 파일을 생성하는 함수
+    """
+    hwp = win32.gencache.EnsureDispatch("HWPFrame.HwpObject")
+    hwp.Open(template_file)
+
+    # 한글 파일 내의 데이터를 지정된 값으로 치환
+    for key, value in data.items():
+        hwp.HAction.GetDefault("InsertText", hwp.HParameterSet.HInsertText.HSet)
+        hwp.HParameterSet.HInsertText.Text = hwp.HAction.Execute(f"{{{{{key}}}}}", value)
+
+    # HWP 파일 저장
+    hwp.SaveAs(output_file)
+    hwp.Quit()
+
+# HWP 파일을 PDF로 변환하는 함수
+def hwp_to_pdf(hwp_file, pdf_file):
+    """
+    HWP 파일을 PDF로 변환하는 함수
+    """
+    hwp = win32.gencache.EnsureDispatch("HWPFrame.HwpObject")
+    hwp.Open(hwp_file)
+    hwp.SaveAs(pdf_file, "PDF")
+    hwp.Quit()
