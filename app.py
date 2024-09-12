@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import win32com.client as win32  # pywin32 라이브러리
+import win32com.client as win32  # pywin32를 사용
 
 # Google API 자격증명 설정
 creds_json = os.getenv('GOOGLE_CREDENTIALS')
